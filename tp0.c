@@ -35,12 +35,12 @@ unsigned char from256to64(unsigned char c){
 int encode(FILE* input, FILE* output){
 	/* padding contiene la cantidad de carecteres de relleno de la salida */
 	int padding=0;
-	/* char tomado del archivo input */
+	/* c_in: char tomado del archivo input */
 	unsigned char c_in=0;
-	/*char que se imprime en output */
+	/*c_out: char que se imprime en output */
 	unsigned char c_out=0;
 	unsigned char mask=0;
-	/* los bits de c descartados se guardan en el char discarded para ser utilizados en la formacion del
+	/* los bits de c_in descartados se guardan en el char discarded para ser utilizados en la formacion del
 	proximo byte de salida , estos bits se acumulan en la parte mas significativa del char, o sea 
 	de izquierda a derecha*/
 	unsigned char discarded=0;
@@ -68,8 +68,8 @@ int encode(FILE* input, FILE* output){
 			shift_right=8-shift_left;
 			discarded=discarded << shift_right;
 			if (acumulated==8){
-				/*si acumulated es igual a 8, puedo hacer de cuenta que lei un nevo caracter del arhcivo
-				por lo que igual c a discarded y salto al principio del bucle con un goto sin tener que pasar
+				/*si acumulated es igual a 8, puedo hacer de cuenta que lei un nevo caracter del arhchivo
+				por lo que igualo c_in a discarded y salto al principio del bucle con un goto sin tener que pasar
 				por la condicion del while y por lo tanto sin leer realmente un nevo char*/
 				c_in=discarded;
 				acumulated=0;
@@ -93,10 +93,27 @@ int decode(FILE* input, FILE* output){
 	return 0;
 }
 
+/* tomo los archivos entrada y salida estandar por defectos */
+FILE* input=NULL;
+FILE* output=NULL;
+
+/* cierra los archivos input y output, verificando antes si se tratan de los arhivos estandars o sin NULL,
+debe invocarse antes de un return */
+void freeFiles(){
+	if (input!=stdin && input!=NULL){
+		fclose(input);
+		input=NULL;
+	}
+	if (output!=stdout && output!=NULL){
+		fclose(output);
+		output=NULL;
+	}
+}
+
 int main(int argc, char** argv){
-	/* tomo los archivos entrada y salida estandar por defectos*/
-	FILE* input=stdin;
-	FILE* output=stdout;
+	/*tomo por defecto los archivos estandar*/
+	input=stdin;
+	output=stdout;
 	/* action apunta a la funcion a correr */
 	int (*action)(FILE*,FILE*)=encode;
 	/* inicialiso las opciones largas*/
@@ -126,19 +143,24 @@ int main(int argc, char** argv){
 					"Examples:\n"
 						"tp0 -a encode -i ~/imput -o ~/output\n"
 						"tp0 -a decode\n");
-				break;
+				/* el usario podria invocar tp0 -i input -h, por eso libero los archivos, aunque no tendria que pasar*/
+				freeFiles();
+				return 0;
 			case 'V':
 				printf("version 1\n");
-				break;
+				freeFiles();
+				return 0;
 			case 'i':
 				if (!(input=fopen(optarg, "r"))){
 					perror("no se pudo abrir input");
+					freeFiles();
 					return errno;
 				}
 				break;
 			case 'o':
 				if (!(output=fopen(optarg, "w"))){
 					perror("no se pudo abrir output");
+					freeFiles();
 					return errno;
 				}
 				break;	
@@ -149,22 +171,17 @@ int main(int argc, char** argv){
 					action=encode;
 				}else{
 					fprintf(stderr, "no valid action %s", optarg);
+					freeFiles();
 					return -1;
 				}
 				break;
 			default:
+				freeFiles();
 				return -1;
 		}
 	}
 	errno=action(input, output);
-	/*si input distinto a entrada estandar lo libero */
-	if (input!=stdin){
-		fclose(input);
-	}
-	/*si output distinto a salidad estadnar lo libero */
-	if (output!=stdout){
-		fclose(output);
-	}
+	freeFiles();
 	/* retorno el valor que retorno action, no necesariamente  un error*/
 	return errno; 
 }	
