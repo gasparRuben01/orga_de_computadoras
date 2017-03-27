@@ -51,8 +51,15 @@ unsigned char from64to256(unsigned char c){
 	if (c=='/'){
 		return MAP_BAR;
 	}
-	return PADDING_CHAR;
+	if (c==PADDING_CHAR){
+		return 0x3F;
+	}
+	/*en case de haber un caracter malo, retorno el codigo de error 0xFFFF */
+	return 0xFF;
 }
+
+/* en la variable msg_err se guarda el error producido en las funciones encode o decode */
+char* msg_err=NULL;
 
 int encode(FILE* input, FILE* output){
 	/* padding contiene la cantidad de carecteres de relleno de la salida */
@@ -122,6 +129,10 @@ int decode(FILE* input, FILE* output){
 
 	while (((char)(c_in=fgetc(input)))!=PADDING_CHAR && ((char) c_in)!=EOF){
 		c_in=from64to256(c_in);		
+		if (c_in==0xFF){
+			msg_err="Se encontro un caracter incorrecto en el archivo input";
+			return -1;
+		}
 		c_in=c_in<<2;
 		shift_left=c_out_pivot;
 		mask=c_in >> c_out_pivot;
@@ -226,6 +237,9 @@ int main(int argc, char** argv){
 	}
 	errno=action(input, output);
 	freeFiles();
+	if (errno<0){
+		fprintf(stderr, "%s", msg_err);
+	}
 	/* retorno el valor que retorno action, no necesariamente  un error*/
 	return errno; 
 }	
