@@ -11,6 +11,9 @@ los 64 valores y sus correspondientes grupos de caracteres ascii */
 #define INDX_LAST_DIGIT 61
 #define MAP_PLUS_SIMBOL 62
 #define MAP_BAR 63
+#define PADDING_CHAR '='
+
+#define MIN(a,b) (((a)<(b)) ? (a) : (b))
 
 /* transforma el caracter c al caracter ascii de base 64 correspondiente */
 unsigned char from256to64(unsigned char c){
@@ -29,7 +32,26 @@ unsigned char from256to64(unsigned char c){
 	if (c==MAP_BAR){
 		return '/';
 	}
-	return '=';
+	return PADDING_CHAR;
+}
+
+unsigned char from64to256(unsigned char c){
+	if (c>='A' && c<='Z'){
+		return c-'A';
+	}
+	if (c>='a' && c<='z'){
+		return INDX_LAST_LOWER_LETTER-('z'-c);
+	}
+	if (c>='0' && c<='9'){
+		return INDX_LAST_DIGIT-('9'-c);
+	}
+	if (c=='+'){
+		return MAP_PLUS_SIMBOL;
+	}
+	if (c=='/'){
+		return MAP_BAR;
+	}
+	return PADDING_CHAR;
 }
 
 int encode(FILE* input, FILE* output){
@@ -83,17 +105,39 @@ int encode(FILE* input, FILE* output){
 	}
 	padding=acumulated%3;
 	for (i=0; i<padding; i++){
-		fputc('=',output);
+		fputc(PADDING_CHAR, output);
 	}
 	return 0;
 }
 
 int decode(FILE* input, FILE* output){
-	printf("falta implementar decode");
+	/* char a ser impreso en la salida */	
+	unsigned char c_out=0;
+	/* c_out_pivot apunta al ultimo bit (de izquierda a derecha) valido en c_out_load */
+	int c_out_pivot=0;
+	unsigned char c_in=0;	
+	int shift_left=0;
+	int shift_right=0;
+	unsigned char mask=0;
+
+	while (((char)(c_in=fgetc(input)))!=PADDING_CHAR && ((char) c_in)!=EOF){
+		c_in=from64to256(c_in);		
+		c_in=c_in<<2;
+		shift_left=c_out_pivot;
+		mask=c_in >> c_out_pivot;
+		c_out=c_out|mask;
+		c_out_pivot+=MIN(8-c_out_pivot, 6);
+		if (c_out_pivot==8){
+			fputc(c_out, output);
+			shift_right=8-shift_left;
+			c_out=c_in << shift_right;
+			c_out_pivot=6-shift_right;
+		}		
+		
+	}
 	return 0;
 }
 
-/* tomo los archivos entrada y salida estandar por defectos */
 FILE* input=NULL;
 FILE* output=NULL;
 
