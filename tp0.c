@@ -78,34 +78,36 @@ int encode(FILE* input, FILE* output){
 	int shift_right=0;
 	int shift_left=0;
 	int i=0;
-
-	while (((char) (c_in=fgetc(input))) != EOF){
-	LOOP_ENCODE:	mask=c_in;
-			/* tomo los bits que necesita c_out para formar un byte */
-			shift_left=8-BITS_PER_BYTE+acumulated;
-			mask=mask >> shift_left;
-			/* primero agrego los bytes desechados en la anterior lectura */
-			c_out=c_out | discarded;
-			c_out=c_out >> 2;
-			c_out=c_out | mask; 
-			/* convierto c_out a ascii antes de imprimirlo */
-			fputc(from256to64(c_out), output);
-			c_out=0;
-			/* los bits desechados en el shift se aucmulan en c_out */
-			acumulated=shift_left;
-			discarded=c_in;
-			shift_right=8-shift_left;
-			discarded=discarded << shift_right;
-			if (acumulated==8){
-				/*si acumulated es igual a 8, puedo hacer de cuenta que lei un nevo caracter del arhchivo
-				por lo que igualo c_in a discarded y salto al principio del bucle con un goto sin tener que pasar
-				por la condicion del while y por lo tanto sin leer realmente un nevo char*/
-				c_in=discarded;
-				acumulated=0;
-				discarded=0;
-				goto LOOP_ENCODE;
-			}
+	
+	c_in=fgetc(input);
+	while (!feof(input)){
+		mask=c_in;
+		/* tomo los bits que necesita c_out para formar un byte */
+		shift_left=8-BITS_PER_BYTE+acumulated;
+		mask=mask >> shift_left;
+		/* primero agrego los bytes desechados en la anterior lectura */
+		c_out=c_out | discarded;
+		c_out=c_out >> 2;
+		c_out=c_out | mask; 
+		/* convierto c_out a ascii antes de imprimirlo */
+		fputc(from256to64(c_out), output);
+		c_out=0;
+		/* los bits desechados en el shift se aucmulan en c_out */
+		acumulated=shift_left;
+		discarded=c_in;
+		shift_right=8-shift_left;
+		discarded=discarded << shift_right;
+		if (acumulated==8){
+			/*si acumulated es igual a 8, puedo hacer de cuenta que lei un nevo caracter del arhchivo
+			por lo que igualo c_in a discarded y no leo un nuevo caracter */
+			c_in=discarded;
+			acumulated=0;
+			discarded=0;
+		}else{
+			c_in=fgetc(input);
+		}
 	}
+
 	if (acumulated){
 		discarded= discarded >> 2;
 		fputc(from256to64(discarded), output);
@@ -127,7 +129,8 @@ int decode(FILE* input, FILE* output){
 	int shift_right=0;
 	unsigned char mask=0;
 
-	while (((char)(c_in=fgetc(input)))!=PADDING_CHAR && ((char) c_in)!=EOF){
+	c_in=fgetc(input);
+	while (((char) c_in)!=PADDING_CHAR && !feof(input)){
 		c_in=from64to256(c_in);		
 		if (c_in==0xFF){
 			msg_err="Se encontro un caracter incorrecto en el archivo input";
@@ -144,6 +147,7 @@ int decode(FILE* input, FILE* output){
 			c_out=c_in << shift_right;
 			c_out_pivot=6-shift_right;
 		}		
+		c_in=fgetc(input);
 		
 	}
 	return 0;
@@ -206,14 +210,14 @@ int main(int argc, char** argv){
 				freeFiles();
 				return 0;
 			case 'i':
-				if (!(input=fopen(optarg, "r"))){
+				if (!(input=fopen(optarg, "rb"))){
 					perror("no se pudo abrir input");
 					freeFiles();
 					return errno;
 				}
 				break;
 			case 'o':
-				if (!(output=fopen(optarg, "w"))){
+				if (!(output=fopen(optarg, "wb"))){
 					perror("no se pudo abrir output");
 					freeFiles();
 					return errno;
