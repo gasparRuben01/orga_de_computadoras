@@ -12,7 +12,7 @@
 #define BAR 63
 #define PADDING '='
 /* tamanio maximo de una linea de salida */
-#define MAX_LINE_SIZE 75
+#define MAX_LINE_SIZE 76
 
 .globl base64_encode
 .globl base64_decode
@@ -85,7 +85,6 @@ base64_encode:
 
 		/* leo de a 3 bytes para aprovechar el hecho que 3 bytes de 8 bits me dan 4 bytes de 6 bits exacto */
 		li a2, 3
-		move input, zero
 
 		/* guardo todas las variables temporales antes del syscall */
 		jal salvar_variables
@@ -94,13 +93,14 @@ base64_encode:
 		jal recuperar_variables
 
 		/* cargo input byte por byte, porque en mi simulador mips es little-endian (al igual que mi maquina) */
-		lb a0, 0(a1)
+		move input, zero
+		lbu a0, 0(a1)
 		sll a3, a0, 24
 		or input, input, a3
-		lb a0, 1(a1)
+		lbu a0, 1(a1)
 		sll a3, a0, 16
 		or input, input, a3
-		lb a0, 2(a1)
+		lbu a0, 2(a1)
 		sll a3, a0, 8	
 		or input, input, a3
 		
@@ -151,14 +151,14 @@ base64_encode:
 			li v0, SYS_write
 			addiu a1, $fp, frame_output
 			li a2, 1
-			jal salvar_variables
-			syscall
-			jal recuperar_variables
-			subu i, i, 1
 
 			/* al hacer shift left, mato al byte de 6 bits que se encontra en la parte mas significativa del */
 			/* registro y lo reemplazo con el siguiente */
 			sll input, input, 6
+			jal salvar_variables
+			syscall
+			jal recuperar_variables
+			subu i, i, 1
 
 			/*largo de linea */
 			subu line_size, 1
@@ -176,7 +176,7 @@ base64_encode:
 		jal salvar_variables
 		syscall
 		jal recuperar_variables
-		li line_size, 75
+		li line_size, MAX_LINE_SIZE
 		jr retorno
 
 	return:
