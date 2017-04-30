@@ -21,7 +21,7 @@
 
 .data
 .align 2
-errmsg:.word err0, err1
+errmsg:.word err0, err1, err2
        .size errmsg, 8
 .align 0
 err0: .asciiz ""
@@ -417,7 +417,7 @@ base64_decode:
 		j decode_return
 
 	decode_err2:
-		li v1, 2
+		li v0, 2
 		j decode_return
 
 	decode_desechar_nueva_linea:

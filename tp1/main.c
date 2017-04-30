@@ -92,7 +92,7 @@ int main(int argc, char** argv){
 	}
 	errno=action(fileno(input), fileno(output));
 	freeFiles();
-	if (errno<0){
+	if (errno>0){
 		fprintf(stderr, "%s", errmsg[errno]);
 	}
 	/* retorno el valor que retorno action, no necesariamente  un error*/
