@@ -25,8 +25,8 @@ errmsg:.word err0, err1
        .size errmsg, 8
 .align 0
 err0: .asciiz ""
-err1: .asciiz "la cantidad de bytes de 6 bits, en el archivo entrada, no es multiplo de 4"
-err2: .asciiz "se encontro un byte desconocido en el archivo"
+err1: .asciiz "archivo mal formado"
+err2: .asciiz "ascii no valido encontrado en el archivo"
 
 .text
 .abicalls
@@ -316,10 +316,25 @@ base64_decode:
 						beq a2, a1, decode_bar
 						li a2, 61 /* '=':61 */
 						beq a2, a1, decode_equal
+
+						/*si vale menos de 47 y no es uno de los ascii anteriores entonces es un byte invalido */
+						slti a2, a1, 47
+						bne a2, zero, decode_err2
+
 						slti a2, a1, 58 /* '9':57 */
 						bne a2, zero, decode_digit
+						
+						/* si no es numero y vale menos que 65 (A en ascii) entonces en un byte invalido */
+						slti a2, a1, 65
+						bne a2, zero, decode_err2
+
 						slti a2, a1, 91 /* 'Z':90 */
 						bne a2, zero, decode_upper_letter
+
+						/* si vale menos de 97(a en ascii ) y no es una letra mayuscula, entonces en un byte invalido*/
+						slti a2, a1, 97
+						bne a2, zero, decode_err2
+
 						slti a2, a1, 123 /* 'z':122 */
 						bne a2, zero, decode_lower_letter
 
@@ -350,7 +365,6 @@ base64_decode:
 
 					sllv a1, a1, decode_shift_left
 					or decode_input, decode_input, a1
-sw decode_input, decode_frame_output($fp)
 					move a1, zero
 					subu decode_shift_left, decode_shift_left, 6	
 					subu decode_i, decode_i, 1
@@ -409,11 +423,14 @@ sw decode_input, decode_frame_output($fp)
 	decode_desechar_nueva_linea:
 		lw a0, decode_frame_finput($fp)
 		addiu a1, $fp, decode_frame_output /* lo guardo en la salida, este valor se va a perder igualmente */
+		move decode_output, zero
 		li a2, 1
 		li v0, SYS_read
 		jal decode_salvar_variables
 		syscall
 		jal decode_recuperar_variables
+		li a2, 10 /* CR=10 en ascii */
+		bne a2, decode_output, decode_err1 /*si no hay un caracter de nueva linea cada 76 caracteres entonces hay un error */
 		li decode_distance_in_words_to_newline, DECODE_DISTANCE_IN_WORDS_TO_NEWLINE
 		jr decode_retorno
 
