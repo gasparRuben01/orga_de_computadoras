@@ -410,6 +410,7 @@ sw decode_input, decode_frame_output($fp)
 		lw a0, decode_frame_finput($fp)
 		addiu a1, $fp, decode_frame_output /* lo guardo en la salida, este valor se va a perder igualmente */
 		li a2, 1
+		li v0, SYS_read
 		jal decode_salvar_variables
 		syscall
 		jal decode_recuperar_variables
